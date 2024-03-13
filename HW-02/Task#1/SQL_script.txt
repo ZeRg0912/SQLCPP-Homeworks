@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS broker_Albums_of_Artists (
 );
 
 CREATE TABLE IF NOT EXISTS broker_Tracks_in_Albums (
-	genre_id INTEGER NOT NULL REFERENCES Albums(id),	
-	artist_id INTEGER NOT NULL REFERENCES Tracks(id)
+	album_id INTEGER NOT NULL REFERENCES Albums(id),	
+	track_id INTEGER NOT NULL REFERENCES Tracks(id)
 );
 
 CREATE TABLE IF NOT EXISTS Collection (

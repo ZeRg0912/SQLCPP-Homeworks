@@ -1,16 +1,127 @@
+-- HW-02 Создание таблиц
+CREATE TABLE IF NOT EXISTS Genres (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Artists (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL	
+);
+
+CREATE TABLE IF NOT EXISTS Albums (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL,
+	year_of_release INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Tracks (
+	id SERIAL PRIMARY KEY,
+	album_id INTEGER NOT NULL REFERENCES Albums(id),
+	name VARCHAR(60) NOT NULL,
+	duration INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS broker_Artists_Genres (
+	genre_id INTEGER NOT NULL REFERENCES Genres(id),	
+	artist_id INTEGER NOT NULL REFERENCES Artists(id)
+);
+
+CREATE TABLE IF NOT EXISTS broker_Albums_of_Artists (
+	artist_id INTEGER NOT NULL REFERENCES Artists(id),	
+	album_id INTEGER NOT NULL REFERENCES Albums(id)
+);
+
+CREATE TABLE IF NOT EXISTS broker_Tracks_in_Albums (
+	album_id INTEGER NOT NULL REFERENCES Albums(id),	
+	track_id INTEGER NOT NULL REFERENCES Tracks(id)
+);
+
+CREATE TABLE IF NOT EXISTS Collection (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL,
+	year_of_release INTEGER NOT NULL,
+	album_id INTEGER NOT NULL REFERENCES Albums(id),	
+	track_id INTEGER NOT NULL REFERENCES Tracks(id)
+);
+
+
 -- Задание 1 Работа с заполнение таблиц
 -- #1
+INSERT INTO genres (name)
+VALUES	('Pop'), 
+		('Jazz'), 
+		('Rock'), 
+		('Classic');
+
 INSERT INTO artists (name)
-VALUES('Test_artist');
+VALUES	('Pop_Artist'), 
+		('Jazz_artist'), 
+		('Rock_artist'), 
+		('Classic_artist');
+		
+INSERT INTO albums(name ,year_of_release)
+VALUES	('Pop_album_1', 2020),
+		('Pop_album_2', 2007),
+		('Pop_album_3', 1995),
+		('Jazz_album_1', 1976),
+		('Jazz_album_2', 2005),
+		('Jazz_album_3', 2023),
+		('Rock_album_1', 2024),
+		('Rock_album_2', 2004),
+		('Rock_album_3', 1996),
+		('Classic_album_1', 1753),
+		('Classic_album_2', 1749),
+		('Classic_album_3', 1784);
 
 INSERT INTO tracks(album_id, name ,duration)
-VALUES(12, 'Test_track', 111);
+VALUES	((SELECT id FROM albums WHERE name = 'Pop_album_1'), 'Pop_track_1', 3,52),
+		((SELECT id FROM albums WHERE name = 'Pop_album_2'), 'Pop_track_2', 3,11),
+		((SELECT id FROM albums WHERE name = 'Pop_album_2'), 'Pop_track_3', 4,08),
+		((SELECT id FROM albums WHERE name = 'Pop_album_3'), 'Pop_track_4', 3,21),
+		((SELECT id FROM albums WHERE name = 'Jazz_album_1'), 'Jazz_track_1', 5,21),
+		((SELECT id FROM albums WHERE name = 'Jazz_album_1'), 'Jazz_track_2', 3,45),
+		((SELECT id FROM albums WHERE name = 'Jazz_album_2'), 'Jazz_track_3', 2,34),
+		((SELECT id FROM albums WHERE name = 'Jazz_album_3'), 'Jazz_track_4', 7,21),
+		((SELECT id FROM albums WHERE name = 'Rock_album_1'), 'Rock_track_1', 5,21),
+		((SELECT id FROM albums WHERE name = 'Rock_album_2'), 'Rock_track_2', 4,32),
+		((SELECT id FROM albums WHERE name = 'Rock_album_1'), 'Rock_track_3', 3,54),
+		((SELECT id FROM albums WHERE name = 'Rock_album_3'), 'Rock_track_4', 4,53),
+		((SELECT id FROM albums WHERE name = 'Classic_album_2'), 'Classic_track_1', 8,21),
+		((SELECT id FROM albums WHERE name = 'Classic_album_2'), 'Classic_track_2', 6,42),
+		((SELECT id FROM albums WHERE name = 'Classic_album_3'), 'Classic_track_3', 5,51),
+		((SELECT id FROM albums WHERE name = 'Classic_album_1'), 'Classic_track_4', 3,21),
 
-INSERT INTO albums(name ,year_of_release)
-VALUES('Test_album', 2020);
+INSERT INTO broker_tracks_in_albums (album_id ,track_id)
+SELECT albums.id, tracks.id FROM albums
+JOIN tracks ON albums.id = tracks.album_id;
 
-INSERT INTO broker_tracks_in_albums (albums_id ,tracks_id)
-VALUES(13, 40);
+INSERT INTO broker_albums_of_artists (artist_id, album_id)
+VALUES	((SELECT id FROM artists WHERE name = 'Pop_Artist'), (SELECT id FROM albums WHERE name = 'Pop_album_1')),
+		((SELECT id FROM artists WHERE name = 'Pop_Artist'), (SELECT id FROM albums WHERE name = 'Pop_album_2')),
+		((SELECT id FROM artists WHERE name = 'Pop_Artist'), (SELECT id FROM albums WHERE name = 'Pop_album_3')),
+		((SELECT id FROM artists WHERE name = 'Jazz_artist'), (SELECT id FROM albums WHERE name = 'Jazz_album_1')),
+		((SELECT id FROM artists WHERE name = 'Jazz_artist'), (SELECT id FROM albums WHERE name = 'Jazz_album_2')),
+		((SELECT id FROM artists WHERE name = 'Jazz_artist'), (SELECT id FROM albums WHERE name = 'Jazz_album_3')),
+		((SELECT id FROM artists WHERE name = 'Rock_artist'), (SELECT id FROM albums WHERE name = 'Rock_album_1')),
+		((SELECT id FROM artists WHERE name = 'Rock_artist'), (SELECT id FROM albums WHERE name = 'Rock_album_2')),
+		((SELECT id FROM artists WHERE name = 'Rock_artist'), (SELECT id FROM albums WHERE name = 'Rock_album_3')),
+		((SELECT id FROM artists WHERE name = 'Classic_artist'), (SELECT id FROM albums WHERE name = 'Classic_album_1')),
+		((SELECT id FROM artists WHERE name = 'Classic_artist'), (SELECT id FROM albums WHERE name = 'Classic_album_2')),
+		((SELECT id FROM artists WHERE name = 'Classic_artist'), (SELECT id FROM albums WHERE name = 'Classic_album_3'));
+
+INSERT INTO broker_genres_of_artists (artist_id, genre_id)
+VALUES	((SELECT id FROM artists WHERE name = 'Pop_Artist'), (SELECT id FROM genres WHERE name = 'Pop')),
+		((SELECT id FROM artists WHERE name = 'Pop_Artist'), (SELECT id FROM genres WHERE name = 'Rock')),
+		((SELECT id FROM artists WHERE name = 'Jazz_artist'), (SELECT id FROM genres WHERE name = 'Jazz')),
+		((SELECT id FROM artists WHERE name = 'Rock_artist'), (SELECT id FROM genres WHERE name = 'Rock')),
+		((SELECT id FROM artists WHERE name = 'Classic_artist'), (SELECT id FROM genres WHERE name = 'Classic'));
+		
+SELECT album_id, track_id, track_name INTO TempCollection FROM albums
+JOIN tracks ON albums.id = tracks.album_id WHERE albums.name = 'Pop_album_1' AND tracks.name IN ('Pop_track_1', 'Pop_track_2');
+INSERT INTO collection (name, year_of_release, album_id, track_id)
+SELECT 'Pop_collection', 2018, album_id, track_id FROM TempCollection;
+DROP TABLE TempCollection;
 
 -- Задание 2
 -- #1 Название и продолжительность самого длительного трека.
