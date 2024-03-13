@@ -1,48 +1,48 @@
 -- HW-02 Создание таблиц
-CREATE TABLE IF NOT EXISTS Genres (
+CREATE TABLE IF NOT EXISTS genres (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(60) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Artists (
+CREATE TABLE IF NOT EXISTS artists (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(60) NOT NULL	
 );
 
-CREATE TABLE IF NOT EXISTS Albums (
+CREATE TABLE IF NOT EXISTS albums (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(60) NOT NULL,
 	year_of_release INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Tracks (
+CREATE TABLE IF NOT EXISTS tracks (
 	id SERIAL PRIMARY KEY,
-	album_id INTEGER NOT NULL REFERENCES Albums(id),
+	album_id INTEGER NOT NULL REFERENCES albums(id),
 	name VARCHAR(60) NOT NULL,
 	duration INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS broker_Artists_Genres (
-	genre_id INTEGER NOT NULL REFERENCES Genres(id),	
-	artist_id INTEGER NOT NULL REFERENCES Artists(id)
+CREATE TABLE IF NOT EXISTS broker_artists_genres (
+	genre_id INTEGER NOT NULL REFERENCES genres(id),	
+	artist_id INTEGER NOT NULL REFERENCES artists(id)
 );
 
-CREATE TABLE IF NOT EXISTS broker_Albums_of_Artists (
-	artist_id INTEGER NOT NULL REFERENCES Artists(id),	
-	album_id INTEGER NOT NULL REFERENCES Albums(id)
+CREATE TABLE IF NOT EXISTS broker_albums_of_artists (
+	artist_id INTEGER NOT NULL REFERENCES artists(id),	
+	album_id INTEGER NOT NULL REFERENCES albums(id)
 );
 
-CREATE TABLE IF NOT EXISTS broker_Tracks_in_Albums (
-	album_id INTEGER NOT NULL REFERENCES Albums(id),	
-	track_id INTEGER NOT NULL REFERENCES Tracks(id)
+CREATE TABLE IF NOT EXISTS broker_tracks_in_albums (
+	album_id INTEGER NOT NULL REFERENCES albums(id),	
+	track_id INTEGER NOT NULL REFERENCES tracks(id)
 );
 
 CREATE TABLE IF NOT EXISTS Collection (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(60) NOT NULL,
 	year_of_release INTEGER NOT NULL,
-	album_id INTEGER NOT NULL REFERENCES Albums(id),	
-	track_id INTEGER NOT NULL REFERENCES Tracks(id)
+	album_id INTEGER NOT NULL REFERENCES albums(id),	
+	track_id INTEGER NOT NULL REFERENCES tracks(id)
 );
 
 
@@ -90,7 +90,7 @@ VALUES	((SELECT id FROM albums WHERE name = 'Pop_album_1'), 'Pop_track_1', 3,52)
 		((SELECT id FROM albums WHERE name = 'Classic_album_2'), 'Classic_track_1', 8,21),
 		((SELECT id FROM albums WHERE name = 'Classic_album_2'), 'Classic_track_2', 6,42),
 		((SELECT id FROM albums WHERE name = 'Classic_album_3'), 'Classic_track_3', 5,51),
-		((SELECT id FROM albums WHERE name = 'Classic_album_1'), 'Classic_track_4', 3,21),
+		((SELECT id FROM albums WHERE name = 'Classic_album_1'), 'My_Classic_track_4', 3,21),
 
 INSERT INTO broker_tracks_in_albums (album_id ,track_id)
 SELECT albums.id, tracks.id FROM albums
@@ -151,7 +151,7 @@ WHERE name LIKE '%my%' OR name LIKE '%мой%';
 -- Задание 3
 -- #1 Количество исполнителей в каждом жанре.
 SELECT g.name AS genre, COUNT(DISTINCT ag.artist_id) AS artist_count FROM genres g
-LEFT JOIN broker_artists_Genres ag ON g.id = ag.genre_id
+LEFT JOIN broker_artists_genres ag ON g.id = ag.genre_id
 GROUP BY g.name;
 
 -- #2 Количество треков, вошедших в альбомы 2019–2020 годов.
@@ -178,7 +178,7 @@ WHERE id NOT IN (
 SELECT DISTINCT c.name AS collection_name FROM Collection c
 JOIN tracks t ON c.track_id = t.id
 JOIN albums a ON c.album_id = a.id
-JOIN broker_Albums_of_Artists a_of_a ON a.id = a_of_a.album_id
+JOIN broker_albums_of_artists a_of_a ON a.id = a_of_a.album_id
 JOIN artists ON a_of_a.artist_id = artists.id
 WHERE artists.name = 'AC/DC';
 
@@ -192,18 +192,18 @@ GROUP BY a.name
 HAVING COUNT(DISTINCT a_g.genre_id) > 1;
 
 -- #2 Наименования треков, которые не входят в сборники.
-SELECT t.name AS track_name FROM Tracks t
+SELECT t.name AS track_name FROM tracks t
 LEFT JOIN collection c ON t.id = c.track_id
 WHERE c.id IS NULL;
 
 -- #3 Исполнитель или исполнители, написавшие самый короткий по продолжительности трек, 
 --    — теоретически таких треков может быть несколько.
 SELECT a.name AS artist_name, t.name AS track_name, t.duration AS track_duration
-FROM Artists a
-JOIN broker_Albums_of_Artists ba ON a.id = ba.artist_id
-JOIN Albums al ON ba.album_id = al.id
-JOIN broker_Tracks_in_Albums ta ON al.id = ta.albums_id
-JOIN Tracks t ON ta.tracks_id = t.id
+FROM artists a
+JOIN broker_albums_of_artists ba ON a.id = ba.artist_id
+JOIN albums al ON ba.album_id = al.id
+JOIN broker_tracks_in_albums ta ON al.id = ta.albums_id
+JOIN tracks t ON ta.tracks_id = t.id
 WHERE t.duration IS NOT NULL
 ORDER BY t.duration ASC
 LIMIT 1;
