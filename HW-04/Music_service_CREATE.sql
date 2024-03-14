@@ -1,0 +1,45 @@
+CREATE TABLE IF NOT EXISTS genres (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS artists (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL	
+);
+
+CREATE TABLE IF NOT EXISTS albums (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL,
+	year_of_release INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tracks (
+	id SERIAL PRIMARY KEY,
+	album_id INTEGER NOT NULL REFERENCES albums(id),
+	name VARCHAR(60) NOT NULL,
+	duration FLOAT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS broker_artists_genres (
+	genre_id INTEGER NOT NULL REFERENCES genres(id),	
+	artist_id INTEGER NOT NULL REFERENCES artists(id)
+);
+
+CREATE TABLE IF NOT EXISTS broker_albums_of_artists (
+	artist_id INTEGER NOT NULL REFERENCES artists(id),	
+	album_id INTEGER NOT NULL REFERENCES albums(id)
+);
+
+CREATE TABLE IF NOT EXISTS broker_tracks_in_albums (
+	album_id INTEGER NOT NULL REFERENCES albums(id),	
+	track_id INTEGER NOT NULL REFERENCES tracks(id)
+);
+
+CREATE TABLE IF NOT EXISTS collection (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(60) NOT NULL,
+	year_of_release INTEGER NOT NULL,
+	album_id INTEGER NOT NULL REFERENCES albums(id),	
+	track_id INTEGER NOT NULL REFERENCES tracks(id)
+);
