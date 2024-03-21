@@ -1,185 +1,172 @@
+// ClientManager.cpp
 #include "Client_Manager.h"
+#include <iostream>
+#include <sstream>
 
-Manager::Manager(
-	const std::string& dbname,
-	const std::string& user,
-	const std::string& password,
-	const std::string& host,
-	const std::string& port
-) : conn(
-	"dbname=" + dbname +
-	" user=" + user +
-	" password=" + password + 
-	" host=" + host + 
-	" port=" + port
-) {}
+ClientManager::ClientManager(const std::string& db_connection_string) : conn(db_connection_string) {}
 
-void Manager::CreateTable() {
-	try {
-		ExecuteUpdate(
-			"CREATE TABLE IF NOT EXISTS clients (   \
-				id SERIAL PRIMARY KEY,				\
-				first_name TEXT,					\
-				last_name TEXT,						\
-				email TEXT							\
-			)", 
-			{}
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error creating table: " << e.what() << std::endl;
-	}
+void ClientManager::createTables() {
+    try {
+        pqxx::work txn(conn);
+        txn.exec(R"(
+            CREATE TABLE IF NOT EXISTS clients (
+                id SERIAL PRIMARY KEY,
+                first_name TEXT,
+                last_name TEXT,
+                email TEXT UNIQUE,
+                phones TEXT[]
+            )
+        )");
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-void Manager::AddClient(
-	const std::string& first_name,
-	const std::string& last_name,
-	const std::string& email) 
-{
-	try {
-		ExecuteUpdate(
-			"INSERT INTO clients					\
-				(first_name, last_name, email)		\
-				VALUES ($1, $2, $3)",
-			{ first_name, last_name, email }
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error adding client: " << e.what() << std::endl;
-	}
+void ClientManager::addClient(const Client& client) {
+    try {
+        pqxx::work txn(conn);
+
+        // Преобразование вектора телефонов в строку
+        std::string phones_str = "{";
+        for (size_t i = 0; i < client.phones.size(); ++i) {
+            phones_str += "'" + client.phones[i] + "'";
+            if (i != client.phones.size() - 1) {
+                phones_str += ",";
+            }
+        }
+        phones_str += "}";
+
+        // Вставка данных о клиенте
+        pqxx::result res = txn.exec_params("INSERT INTO clients (first_name, last_name, email, phones) VALUES ($1, $2, $3, $4) RETURNING id",
+            client.first_name, client.last_name, client.email, phones_str);
+
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-void Manager::AddPhone(
-	const std::string& first_name,
-	const std::string& last_name,
-	const std::string& phone) 
-{
-	try {
-		pqxx::result result = ExecuteQuery(
-			"SELECT id FROM clients							\
-				WHERE first_name = $1 AND last_name = $2",
-			{ first_name, last_name }
-		);
-		int client_id = result[0][0].as<int>();
-		ExecuteUpdate(
-			"INSERT INTO phones					\
-				(client_id, phone_number)		\
-				VALUES ($1, $2)",
-			{ std::to_string(client_id), phone }
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error adding phone: " << e.what() << std::endl;
-	}
+void ClientManager::addPhone(const std::string& email, const std::string& phone) {
+    try {
+        pqxx::work txn(conn);
+
+        // Используем array_append для добавления нового телефона в массив
+        txn.exec_params("UPDATE clients SET phones = array_append(phones, $1) WHERE email = $2", phone, email);
+
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-void Manager::UpdateClient(
-	const std::string& first_name,
-	const std::string& last_name,
-	const std::string& email,
+void ClientManager::deletePhone(const std::string& email, const std::string& phone) {
+    try {
+        pqxx::work txn(conn);
 
-	const std::string& new_first_name,
-	const std::string& new_last_name,
-	const std::string& new_email) 
-{
-	try {
-		ExecuteUpdate(
-			"UPDATE clients							\
-				SET		first_name = $4,			\
-						last_name = $5,				\
-						email = $6,					\
-				WHERE	first_name = $1	AND			\
-						last_name = $2	AND			\
-						email = $3",
-			{ first_name, last_name, email, new_first_name, new_last_name, new_email }
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error updating client: " << e.what() << std::endl;
-	}
+        // Используем array_remove для удаления телефона из массива
+        txn.exec_params("UPDATE clients SET phones = array_remove(phones, $1) WHERE email = $2", phone, email);
+
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-void Manager::DeletePhone(
-	const std::string& first_name,
-	const std::string& last_name,
-	const std::string& phone) 
-{
-	try {
-		pqxx::result result = ExecuteQuery(
-			"SELECT id FROM clients							\
-				WHERE first_name = $1 AND last_name = $2",
-			{ first_name, last_name }
-		);
-		int client_id = result[0][0].as<int>();
-		ExecuteUpdate(
-			"DELETE FROM phones					\
-				WHERE	client_id = $1 AND		\
-						phone_number = $2",
-			{ std::to_string(client_id), phone }
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error deleting phone: " << e.what() << std::endl;
-	}
+void ClientManager::deleteClient(const std::string& email) {
+    try {
+        pqxx::work txn(conn);
+
+        // Удаляем клиента
+        txn.exec_params("DELETE FROM clients WHERE email = $1", email);
+
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-void Manager::DeleteClient(
-	const std::string& first_name,
-	const std::string& last_name,
-	const std::string& email)
-{
-	try {
-		ExecuteUpdate(
-			"DELETE FROM clients				\
-				WHERE	first_name = $1 AND		\
-						last_name = $2	AND		\
-						email = $3",
-			{ first_name, last_name, email }
-		);
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error deleting client: " << e.what() << std::endl;
-	}
+void ClientManager::updateClient(const std::string& email, const std::string& newEmail, const std::string& newFirstName, const std::string& newLastName) {
+    try {
+        pqxx::work txn(conn);
+        txn.exec_params("UPDATE clients SET email = $1, first_name = $2, last_name = $3 WHERE email = $4",
+            newEmail, newFirstName, newLastName, email);
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
-std::vector<Client> Manager::FindClient(const std::string& search_term) {
-	std::vector<Client> results;
-	try {
-		pqxx::result result = ExecuteQuery(
-			"SELECT * FROM clients				\
-				WHERE	first_name = $1 OR		\
-						last_name = $2	OR		\
-						emal = $3",
-			{ search_term, search_term, search_term }
-		);
-		for (const auto& row : result) {
-			Client client;
-			client.id = row["id"].as<int>();
-			client.first_name = row["first_name"].as<std::string>();
-			client.last_name = row["last_name"].as<std::string>();
-			client.email = row["email"].as<std::string>();
-			results.push_back(client);
-		}
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error finding client: " << e.what() << std::endl;
-	}
+std::vector<Client> ClientManager::findClients(const std::string& search_query) {
+    std::vector<Client> results;
+    try {
+        pqxx::work txn(conn);
+        pqxx::result res = txn.exec_params(R"(
+            SELECT id, first_name, last_name, email, phones
+            FROM clients
+            WHERE email = $1 OR first_name = $1 OR last_name = $1
+        )", search_query);
+        txn.commit();
+
+        for (const auto& row : res) {
+            Client client;
+            client.id = row["id"].as<int>();
+            client.first_name = row["first_name"].as<std::string>();
+            client.last_name = row["last_name"].as<std::string>();
+            client.email = row["email"].as<std::string>();
+            // Разделение строки телефонов по разделителю и добавление в вектор
+            std::stringstream ss(row["phones"].as<std::string>());
+            std::string phone;
+            while (std::getline(ss, phone, ',')) {
+                client.phones.push_back(phone);
+            }
+            results.push_back(client);
+        }
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return results;
 }
 
-pqxx::result Manager::ExecuteQuery(
-	const std::string& query,
-	const std::vector <std::string>& parameters)
-{
-	pqxx::nontransaction txn(conn);
-	pqxx::result result(txn.exec_params(query, parameters));
-	return result;
-}
-
-void Manager::ExecuteUpdate(
-	const std::string& query,
-	const std::vector<std::string>& parameters)
-{
-	pqxx::work txn(conn);
-	txn.exec_params(query, parameters);
-	txn.commit();
+void ClientManager::executeQuery(const std::string& query, const std::vector<std::string>& params) {
+    try {
+        pqxx::work txn(conn);
+        txn.exec_params(query, params);
+        txn.commit();
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
