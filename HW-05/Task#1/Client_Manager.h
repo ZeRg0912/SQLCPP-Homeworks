@@ -37,7 +37,8 @@ public:
 private:
     pqxx::connection conn;
 
-    void ExecuteQuery(const std::string& query, const std::vector<std::string>& params = {});
+    //void ExecuteQuery(const std::string& query, const std::vector<std::string>& params = {});
 };
 
 
+std::string InputConnectLine();

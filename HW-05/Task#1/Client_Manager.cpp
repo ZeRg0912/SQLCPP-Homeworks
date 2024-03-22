@@ -163,16 +163,58 @@ std::vector<Client> Manager::FindClients(const std::string& search_query) {
     return results;
 }
 
-void Manager::ExecuteQuery(const std::string& query, const std::vector<std::string>& params) {
-    try {
-        pqxx::work txn(conn);
-        txn.exec_params(query, params);
-        txn.commit();
+//void Manager::ExecuteQuery(const std::string& query, const std::vector<std::string>& params) {
+//    try {
+//        pqxx::work txn(conn);
+//        txn.exec_params(query, params);
+//        txn.commit();
+//    }
+//    catch (const pqxx::sql_error& e) {
+//        std::cerr << "SQL error: " << e.what() << std::endl;
+//    }
+//    catch (const std::exception& e) {
+//        std::cerr << "Error: " << e.what() << std::endl;
+//    }
+//}
+
+
+std::string InputConnectLine() {
+    std::string input;
+    Conn conn;
+    std::string db_connection_string;
+    system("cls");
+    std::cout << "Введите данные для подключения к БД:" << std::endl;
+    std::cout << "Введите dbname: ";
+    std::cin >> input;
+    db_connection_string += "dbname=" + input;
+    std::cout << "Введите user: ";
+    std::cin >> input;
+    db_connection_string += " user=" + input;
+    std::cout << "Введите password: ";
+    std::cin >> input;
+    db_connection_string += " password=" + input;
+    std::cout << "Введите host: ";
+    std::cin >> input;
+    transform(input.begin(), input.end(), input.begin(), ::tolower);
+    if (input == "local") input = "127.0.0.1";
+    db_connection_string += " host=" + input;
+    input = " ";
+    while (!(input.find_first_not_of("0123456789") == std::string::npos)) {
+        std::cout << "Введите port: ";
+        std::cin >> input;
+        transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input == "base") {
+            input = "5432";
+            break;
+        }
+        if (!(input.find_first_not_of("0123456789") == std::string::npos)) {
+            std::cout << "Неверный ввод, повторите!" << std::endl;
+            std::cout << std::endl;
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        else break;
     }
-    catch (const pqxx::sql_error& e) {
-        std::cerr << "SQL error: " << e.what() << std::endl;
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    db_connection_string += " port=" + input;
+    return db_connection_string;
 }
