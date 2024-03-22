@@ -3,9 +3,9 @@
 #include <iostream>
 #include <sstream>
 
-ClientManager::ClientManager(const std::string& db_connection_string) : conn(db_connection_string) {}
+Manager::Manager(const std::string& db_connection_string) : conn(db_connection_string) {}
 
-void ClientManager::createTables() {
+void Manager::CreateTable() {
     try {
         pqxx::work txn(conn);
         txn.exec(R"(
@@ -27,24 +27,24 @@ void ClientManager::createTables() {
     }
 }
 
-void ClientManager::addClient(const Client& client) {
+void Manager::AddClient(const Client& client) {
     try {
         pqxx::work txn(conn);
 
         // Преобразование вектора телефонов в строку
-        std::string phones_str = "{";
-        for (size_t i = 0; i < client.phones.size(); ++i) {
-            phones_str += "'" + client.phones[i] + "'";
+        std::string phones = "{";
+        for (size_t i = 0; i < client.phones.size(); i++) {
+            phones += client.phones[i];
             if (i != client.phones.size() - 1) {
-                phones_str += ",";
+                phones += ",";
             }
         }
-        phones_str += "}";
-
+        phones += "}";
         // Вставка данных о клиенте
-        pqxx::result res = txn.exec_params("INSERT INTO clients (first_name, last_name, email, phones) VALUES ($1, $2, $3, $4) RETURNING id",
-            client.first_name, client.last_name, client.email, phones_str);
-
+        pqxx::result res = txn.exec_params(R"(
+            INSERT INTO clients (first_name, last_name, email, phones)
+                VALUES ($1, $2, $3, $4) RETURNING id)",
+                client.first_name, client.last_name, client.email, phones);
         txn.commit();
     }
     catch (const pqxx::sql_error& e) {
@@ -55,13 +55,15 @@ void ClientManager::addClient(const Client& client) {
     }
 }
 
-void ClientManager::addPhone(const std::string& email, const std::string& phone) {
+void Manager::AddPhone(const std::string& email, const std::string& phone) {
     try {
         pqxx::work txn(conn);
 
         // Используем array_append для добавления нового телефона в массив
-        txn.exec_params("UPDATE clients SET phones = array_append(phones, $1) WHERE email = $2", phone, email);
-
+        txn.exec_params(R"(
+            UPDATE clients SET phones = array_append(phones, $1) 
+            WHERE email = $2)",
+            phone, email);
         txn.commit();
     }
     catch (const pqxx::sql_error& e) {
@@ -72,13 +74,15 @@ void ClientManager::addPhone(const std::string& email, const std::string& phone)
     }
 }
 
-void ClientManager::deletePhone(const std::string& email, const std::string& phone) {
+void Manager::DeletePhone(const std::string& email, const std::string& phone) {
     try {
         pqxx::work txn(conn);
 
         // Используем array_remove для удаления телефона из массива
-        txn.exec_params("UPDATE clients SET phones = array_remove(phones, $1) WHERE email = $2", phone, email);
-
+        txn.exec_params(R"(
+            UPDATE clients SET phones = array_remove(phones, $1) 
+            WHERE email = $2)",
+            phone, email);
         txn.commit();
     }
     catch (const pqxx::sql_error& e) {
@@ -89,12 +93,13 @@ void ClientManager::deletePhone(const std::string& email, const std::string& pho
     }
 }
 
-void ClientManager::deleteClient(const std::string& email) {
+void Manager::DeleteClient(const std::string& email) {
     try {
         pqxx::work txn(conn);
 
         // Удаляем клиента
-        txn.exec_params("DELETE FROM clients WHERE email = $1", email);
+        txn.exec_params("DELETE FROM clients WHERE email = $1",
+            email);
 
         txn.commit();
     }
@@ -106,10 +111,12 @@ void ClientManager::deleteClient(const std::string& email) {
     }
 }
 
-void ClientManager::updateClient(const std::string& email, const std::string& newEmail, const std::string& newFirstName, const std::string& newLastName) {
+void Manager::UpdateClient(const std::string& email, const std::string& newEmail, const std::string& newFirstName, const std::string& newLastName) {
     try {
         pqxx::work txn(conn);
-        txn.exec_params("UPDATE clients SET email = $1, first_name = $2, last_name = $3 WHERE email = $4",
+        txn.exec_params(R"(
+            UPDATE clients SET email = $1, first_name = $2, last_name = $3 
+            WHERE email = $4)",
             newEmail, newFirstName, newLastName, email);
         txn.commit();
     }
@@ -121,15 +128,14 @@ void ClientManager::updateClient(const std::string& email, const std::string& ne
     }
 }
 
-std::vector<Client> ClientManager::findClients(const std::string& search_query) {
+std::vector<Client> Manager::FindClients(const std::string& search_query) {
     std::vector<Client> results;
     try {
         pqxx::work txn(conn);
         pqxx::result res = txn.exec_params(R"(
-            SELECT id, first_name, last_name, email, phones
-            FROM clients
-            WHERE email = $1 OR first_name = $1 OR last_name = $1
-        )", search_query);
+            SELECT id, first_name, last_name, email, phones FROM clients
+            WHERE email = $1 OR first_name = $1 OR last_name = $1)",
+            search_query);
         txn.commit();
 
         for (const auto& row : res) {
@@ -157,7 +163,7 @@ std::vector<Client> ClientManager::findClients(const std::string& search_query) 
     return results;
 }
 
-void ClientManager::executeQuery(const std::string& query, const std::vector<std::string>& params) {
+void Manager::ExecuteQuery(const std::string& query, const std::vector<std::string>& params) {
     try {
         pqxx::work txn(conn);
         txn.exec_params(query, params);
