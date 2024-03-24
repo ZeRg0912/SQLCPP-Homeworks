@@ -5,46 +5,79 @@
 
 #pragma execution_character_set( "utf-8" )
 
-bool CheckConnection(const std::string& connection_string) {
-	try {
-		std::unique_ptr<Wt::Dbo::backend::Postgres> connection = std::make_unique<Wt::Dbo::backend::Postgres>(connection_string);
-		return true;
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
-		return false;
-	}
-}
+class Publisher;
+class Book;
+class Shop;
+class Stock;
+class Sale;
 
-class Post;
-
-class User {
+class Publisher {
 public:
 	std::string name = "";
-	std::string phone = "";
-	int karma = 0;
-	Wt::Dbo::collection<Wt::Dbo::ptr<Post>> posts;
+	Wt::Dbo::collection<Wt::Dbo::ptr<Book>> books;
 
 	template<typename Action>
 	void persist(Action& a) {
 		Wt::Dbo::field(a, name, "name");
-		Wt::Dbo::field(a, phone, "phone");
-		Wt::Dbo::field(a, karma, "karma");
-		Wt::Dbo::hasMany(a, posts, Wt::Dbo::ManyToOne, "author");
+		Wt::Dbo::hasMany(a, books, Wt::Dbo::ManyToOne, "id_publisher");
 	}
 };
 
-class Post{
+class Book {
 public:
 	std::string title = "";
-	std::string content = "";
-	Wt::Dbo::ptr<User> author;
+	Wt::Dbo::ptr<Publisher> id_publisher;
+	Wt::Dbo::collection<Wt::Dbo::ptr<Stock>> stocks;
 
 	template<typename Action>
 	void persist(Action& a) {
 		Wt::Dbo::field(a, title, "title");
-		Wt::Dbo::field(a, content, "content");
-		Wt::Dbo::belongsTo(a, author, "author");
+		Wt::Dbo::belongsTo(a, id_publisher, "id_publisher");
+		Wt::Dbo::hasMany(a, stocks, Wt::Dbo::ManyToOne, "id_book");
+	}
+};
+
+class Shop {
+public:
+	std::string name = "";
+	Wt::Dbo::collection<Wt::Dbo::ptr<Stock>> stocks;
+
+	template<typename Action>
+	void persist(Action& a) {
+		Wt::Dbo::field(a, name, "name");
+		Wt::Dbo::hasMany(a, stocks, Wt::Dbo::ManyToOne, "id_shop");
+	}
+};
+
+class Stock {
+public:
+	int count;
+	Wt::Dbo::ptr<Book> id_book;
+	Wt::Dbo::ptr<Shop> id_shop;
+	Wt::Dbo::collection<Wt::Dbo::ptr<Sale>> sales;
+
+	template<typename Action>
+	void persist(Action& a) {
+		Wt::Dbo::belongsTo(a, id_book, "id_book");
+		Wt::Dbo::belongsTo(a, id_shop, "id_shop");
+		Wt::Dbo::field(a, count, "count");
+		Wt::Dbo::hasMany(a, sales, Wt::Dbo::ManyToOne, "id_stock");
+	}
+};
+
+class Sale {
+public:
+	int price;
+	int count;
+	std::string date_sale = "";
+	Wt::Dbo::ptr<Stock> id_stock;
+
+	template<typename Action>
+	void persist(Action& a) {
+		Wt::Dbo::field(a, price, "price");
+		Wt::Dbo::field(a, date_sale, "date_sale");
+		Wt::Dbo::belongsTo(a, id_stock, "id_stock");
+		Wt::Dbo::field(a, count, "count");
 	}
 };
 
@@ -63,96 +96,27 @@ int main() {
 
 	try {
 		std::unique_ptr<Wt::Dbo::backend::Postgres> connection = std::make_unique<Wt::Dbo::backend::Postgres>(connection_string);
-		
 		Wt::Dbo::Session session;
-
-		session.setConnection(std::move(connection));
-
-		// объявление таблицы
-		session.mapClass<User>("user");
-		session.mapClass<Post>("post");
-
+		session.setConnection(std::move(connection)); 
 		Wt::Dbo::Transaction transaction(session);
 
+		// объявление таблицы
+		session.mapClass<Publisher>("Publisher");
+		session.mapClass<Book>("Book");
+		session.mapClass<Shop>("Shop");
+		session.mapClass<Stock>("Stock");
+		session.mapClass<Sale>("Sale");
 
-		// Создание таблиц
-		//session.createTables();
-
-
-		// Созданик объектов в таблице
-		/*std::unique_ptr<User> joe(new User);
-		joe->name = "Joe";
-		joe->phone = "+79876543210";
-		joe->karma = 0;
-
-		std::unique_ptr<User> steve(new User{ "Steve", "+71234567890", 50 });
-
-		Wt::Dbo::ptr<User> joeDb = session.add(std::move(joe));
-
-		session.add(std::move(steve));*/
-
-		/*std::unique_ptr<User> steve(new User{ "Steve", "+7 (812) 444 55 55", 50 });
-		std::unique_ptr<User> joe(new User{ "Joe", "+7 (921) 555 44 33", 33 });
-		std::unique_ptr<User> marta(new User{ "Marta", "+7 (888) 999 12 12", 10 });
-
-		session.add(std::move(steve));
-		session.add(std::move(joe));
-		session.add(std::move(marta));*/
-
-
-		// Поиск пользователя с фильтрами
-		//Wt::Dbo::ptr<User> user = session.find<User>().where("name=? AND karma=?").bind("Steve").bind(50);
-
-		/*if (user) {
-			std::cout << "User found!" << std::endl;
-			std::cout << "User karma: " << user->karma << std::endl;
-		} else std::cout << "User not found!" << std::endl;
-
-		std::cout << std::endl;*/
-
-
-		// Изменение данных у объекта
-		/*Wt::Dbo::ptr<User> stevePtr = session.find<User>().where("name=?").bind("Steve");
-
-		if (stevePtr) {
-			stevePtr.modify()->karma = 100;
-			std::cout << "User karma: " << stevePtr->karma << std::endl;
-		}*/
-
-
-		// Использование коллекции
-		/*Wt::Dbo::collection<Wt::Dbo::ptr<User>> users = session.find<User>().where("name=?").bind("Steve");
-
-		for (const auto& user : users) {
-			std::cout << "User found!" << std::endl;
-			std::cout << "User name: " << user->name << std::endl;
-			std::cout << "User phone: " << user->phone << std::endl;
-			std::cout << "User karma: " << user->karma << std::endl;
-			std::cout << std::endl;
-		}*/
-
-		// Создание постов и связи меж таблицами
-		/*Wt::Dbo::ptr<User> steve = session.find<User>().where("name=?").bind("Steve");
-		if (steve) {
-			std::unique_ptr<Post> p1(new Post{ "My first post", "blablabla" });
-			steve.modify()->posts.insert(session.add(std::move(p1)));
-
-			std::unique_ptr<Post> p2(new Post{ "My second post", "tututu" });
-			steve.modify()->posts.insert(session.add(std::move(p2)));
-		}*/
-
-		// смена автора у поста
-		Wt::Dbo::ptr<User> marta = session.find<User>().where("name=?").bind("Marta");
-
-		Wt::Dbo::ptr<Post> p1 = session.find<Post>().where("id=1");
-
-		if (p1) p1.modify()->author = marta;
+		session.createTables();
 
 		transaction.commit();
+
 	}
 	catch (const std::exception& e) {
 		std::cerr << "Error: " << e.what() << std::endl;
 	}
+
+	
 
 	return 0;
 }
