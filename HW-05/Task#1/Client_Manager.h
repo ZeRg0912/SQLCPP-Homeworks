@@ -42,3 +42,4 @@ private:
 
 
 std::string InputConnectLine();
+void ShowFoundClients(std::vector<Client> found_clients);

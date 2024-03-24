@@ -193,14 +193,14 @@ std::string InputConnectLine() {
     std::cout << "¬ведите password: ";
     std::cin >> input;
     db_connection_string += " password=" + input;
-    std::cout << "¬ведите host: ";
+    std::cout << "¬ведите host, можно указать просто local: ";
     std::cin >> input;
     transform(input.begin(), input.end(), input.begin(), ::tolower);
     if (input == "local") input = "127.0.0.1";
     db_connection_string += " host=" + input;
     input = " ";
     while (!(input.find_first_not_of("0123456789") == std::string::npos)) {
-        std::cout << "¬ведите port: ";
+        std::cout << "¬ведите port, можно укзаать просто base: ";
         std::cin >> input;
         transform(input.begin(), input.end(), input.begin(), ::tolower);
         if (input == "base") {
@@ -217,4 +217,26 @@ std::string InputConnectLine() {
     }
     db_connection_string += " port=" + input;
     return db_connection_string;
+}
+
+void ShowFoundClients(std::vector<Client> found_clients) {
+    for (const auto& client : found_clients) {
+        std::cout << "Found client: " << client.first_name << " " << client.last_name << " (" << client.email << ")" << std::endl;
+        std::string phone_str;
+        std::string delete_chars = "{}\"'";
+        std::cout << "Phone: ";
+        for (const auto& phone : client.phones) {
+            /*if (client.phones.back() == phone) std::cout << phone << std::endl;
+            else std::cout << phone << ", ";*/
+            if (client.phones.back() == phone) phone_str += phone;
+            else {
+                phone_str += phone;
+                phone_str += ", ";
+            }
+        }
+        for (char c : delete_chars) {
+            phone_str.erase(std::remove(phone_str.begin(), phone_str.end(), c), phone_str.end());
+        }
+        std::cout << phone_str << std::endl;
+    }
 }

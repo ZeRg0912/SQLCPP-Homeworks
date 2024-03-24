@@ -5,69 +5,78 @@
 
 
 int main() {
+    //setlocale(LC_ALL, "Russian");
     SetConsoleCP(CP_UTF8);
-    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8); 
+    //system("chcp 1251");
+    //system("cls");
 
-    /*std::string dbname = "ClientManager";
+    // Задаем вручную через консоль параметры подключения
+    /*try {
+    Manager manager(InputConnectLine());
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }*/
+
+    // Задаем заранее параметры подключения
+    std::string dbname = "ClientManager";
     std::string user = "postgres";
-    std::string password = "Zerg0987";
+    std::string password = "Zerg0912";
     std::string host = "127.0.0.1";
     int port = 5432;
 
-    std::string db_connection_string = 
-        "dbname=" + dbname + 
-        " user=" + user + 
-        " password=" + password + 
-        " host=" + host + 
-        " port=" + std::to_string(port);*/
-    Manager manager(InputConnectLine());
-    manager.CreateTable();
+    std::string db_connection_string =
+        "dbname=" + dbname +
+        " user=" + user +
+        " password=" + password +
+        " host=" + host +
+        " port=" + std::to_string(port);
 
-    // Добавляем клиентов
-    Client client1 = { 1, "John", "Doe", "john.doe@example.com", {"+7 (921) 421-33-44", "+7 (921) 635-98-81"} };
-    Client client2 = { 2, "Alice", "Smith", "alice@example.com", {"+7 (752) 451-63-82"} };
-    Client client3 = { 3, "Bob", "Big", "BigBob@example.com", {"+7 (362) 123-45-67"} };
-    Client client4 = { 4, "Alex", "Crown", "A_C_@example.com", };
+    try {
+        Manager manager(db_connection_string);
+        manager.CreateTable();
 
-    manager.AddClient(client1);
-    manager.AddClient(client2);
-    manager.AddClient(client3);
-    manager.AddClient(client4);
+        // Добавляем клиентов
+        Client client1 = { 1, "John", "Doe", "john.doe@example.com", {"+7 (921) 421-33-44", "+7 (921) 635-98-81"} };
+        Client client2 = { 2, "Alice", "Smith", "alice@example.com", {"+7 (752) 451-63-82"} };
+        Client client3 = { 3, "Bob", "Big", "BigBob@example.com", {"+7 (362) 123-45-67"} };
+        Client client4 = { 4, "John", "Crown", "J_C_@example.com", };
 
-    // Добавляем телефон для существующего клиента
-    //manager.AddPhone("A_C_@example.com", "+7 (111) 111-11-11");
-    //manager.AddPhone("A_C_@example.com", "+7 (222) 222-22-22");
+        manager.AddClient(client1);
+        manager.AddClient(client2);
+        manager.AddClient(client3);
+        manager.AddClient(client4);
 
-    // Изменяем данные о клиенте
-    //manager.UpdateClient("alice@example.com", "new_alice@example.com", "Alice", "Doe");
+        // Добавляем телефон для существующего клиента
+        manager.AddPhone("J_C_@example.com", "+7 (111) 111-11-11");
+        manager.AddPhone("J_C_@example.com", "+7 (222) 222-22-22");
 
-    // Удаляем телефон у клиента
-    //manager.DeletePhone("A_C_@example.com", "+7 (111) 111-11-11");
-    //manager.DeletePhone("A_C_@example.com", "111");
+        // Изменяем данные о клиенте
+        manager.UpdateClient("BigBob@example.com", "new_BigBob@example.com", "Dob", "Big");
 
-    // Удаляем клиента
-    //manager.DeleteClient("john.doe@example.com");
+        // Удаляем телефон у клиента
+        manager.DeletePhone("J_C_@example.com", "+7 (111) 111-11-11");
 
-    // Находим клиентов по данным
-    std::vector<Client> foundClients = manager.FindClients("Alex");
-    for (const auto& client : foundClients) {
-        std::cout << "Found client: " << client.first_name << " " << client.last_name << " (" << client.email << ")" << std::endl;
-        std::string phone_str;
-        std::string delete_chars = "{}'";
-        std::cout << "Phone: ";
-        for (const auto& phone : client.phones) {
-            /*if (client.phones.back() == phone) std::cout << phone << std::endl;
-            else std::cout << phone << ", ";*/
-            if (client.phones.back() == phone) phone_str += phone;
-            else {
-                phone_str += phone;
-                phone_str += ", ";
-            }
-        }
-        for (char c : delete_chars) {
-            phone_str.erase(std::remove(phone_str.begin(), phone_str.end(), c), phone_str.end());
-        }
-        std::cout << phone_str << std::endl;
+        // Удаляем клиента
+        manager.DeleteClient("alice@example.com");
+
+        // Находим клиентов по данным
+        std::vector<Client> found_clients = manager.FindClients("John");
+        std::cout << "Find clients like \"John\": " << std::endl;
+        ShowFoundClients(found_clients);
+
+    }
+    catch (const pqxx::broken_connection& e) {
+        system("chcp 1251");
+        system("cls");
+        std::cerr << "Connection Error: " << e.what() << std::endl;
+    }
+    catch (const pqxx::sql_error& e) {
+        std::cerr << "SQL Error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return 0;
