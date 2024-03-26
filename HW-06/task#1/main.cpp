@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ctime>
 #include <Windows.h>
 #include <string>
 #include <vector>
@@ -308,6 +309,7 @@ void FindAboutPublisher(Wt::Dbo::Session& session, std::string publisher) {
 }
 
 int main() {
+	srand(time(0));
 	SetConsoleCP(CP_UTF8);
 	SetConsoleOutputCP(CP_UTF8);
 	/*system("chcp 1251");
@@ -321,7 +323,7 @@ int main() {
 		"user=postgres "
 		"password=Zerg0987";
 
-#if 0
+#if 1
 	try {
 		//std::unique_ptr<Wt::Dbo::backend::Postgres> connection = std::make_unique<Wt::Dbo::backend::Postgres>(InputConnectLine());
 		std::unique_ptr<Wt::Dbo::backend::Postgres> connection = std::make_unique<Wt::Dbo::backend::Postgres>(connection_string);
