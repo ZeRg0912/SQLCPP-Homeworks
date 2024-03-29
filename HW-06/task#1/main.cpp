@@ -206,7 +206,7 @@ void AddShops(Wt::Dbo::Session& session, int entries) {
 		//std::cout << "Shops added successfully!" << std::endl;
 	}
 	catch (const std::exception& e) {
-		std::cerr << "Error adding shops!" << std::endl;
+		std::cerr << "Error adding shops!" << e.what() << std::endl;
 	}
 }
 
@@ -309,7 +309,7 @@ void FindAboutPublisher(Wt::Dbo::Session& session, std::string publisher) {
 }
 
 int main() {
-	srand(time(0));
+	srand(static_cast<int>(time(0)));
 	SetConsoleCP(CP_UTF8);
 	SetConsoleOutputCP(CP_UTF8);
 	/*system("chcp 1251");
